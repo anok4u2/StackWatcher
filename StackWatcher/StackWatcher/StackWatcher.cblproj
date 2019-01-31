@@ -14,6 +14,7 @@
     <ManagedCode>False</ManagedCode>
     <DebugSymbols>True</DebugSymbols>
     <MaxError>100</MaxError>
+    <NativeLinkLibs>"C:\Program Files (x86)\Windows Kits\10\Lib\10.0.17134.0\um\x86\ntdll.lib" </NativeLinkLibs>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
     <OutputPath>.\bin\x86\Release\</OutputPath>
@@ -23,7 +24,7 @@
     <MaxError>100</MaxError>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Program1.cbl" />
+    <Compile Include="StackWatcher.cbl" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Micro Focus\Visual COBOL\v1.0\MicroFocus.COBOL.targets" />
 </Project>
