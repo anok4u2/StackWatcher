@@ -1,4 +1,3 @@
-       copy "windows".
        identification division.
        program-id. stackwatcher.
       ******************************************************************
@@ -13,6 +12,8 @@
       *  Demo is recursive with a "local-storage section". This is
       *  allocated on the stack when run as native code in Micro Focus.
       *  
+      *  The code should work in either 32 or 64bit. 
+      *  
       *  Date - 11/02/2019
       *  
       ******************************************************************
@@ -24,14 +25,41 @@
        working-storage section.
        01  ws-stack-depth        pic 9(10) value 0.
        01  ws-teb-ptr            pointer.
-       01  ws-stack-size         ULONG.
-       01  ws-mbi                MEMORY-BASIC-INFORMATION.
-       01  ws-size-in            SIZE-T.
-       01  ws-size-out           SIZE-T.
+       01  ws-mbi.  *>  MEMORY-BASIC-INFORMATION.
+        02 baseaddress           pointer.
+        02 allocationbase        pointer.
+      $if p64 set
+        02 allocationprotect pic 9(18) comp-5.
+        02 regionsize        pic 9(18) comp-5.
+        02 state             pic 9(18) comp-5.
+        02 protect           pic 9(18) comp-5.
+        02 1type             pic 9(18) comp-5.
+      $else
+        02 allocationprotect pic 9(9) comp-5.
+        02 regionsize        pic 9(9) comp-5.
+        02 state             pic 9(9) comp-5.
+        02 protect           pic 9(9) comp-5.
+        02 1type             pic 9(9) comp-5.
+      $end
+      $if p64 set
+       01  ws-size-in            pic 9(18) comp-5.
+       01  ws-size-out           pic 9(18) comp-5.
+       01  ws-stack-size         pic 9(18) comp-5.
+       01  ws-lowLim             pic 9(18) comp-5.
+       01  ws-HighLim            pic 9(18) comp-5.
+      $else
+       01  ws-stack-size         pic 9(9) comp-5.
+       01  ws-size-in            pic 9(9) comp-5.
+       01  ws-size-out           pic 9(9) comp-5.
+       01  ws-lowLim             pic 9(9) comp-5.
+       01  ws-HighLim            pic 9(9) comp-5.
+      $end
        01  ws-ptr                pointer.
-       01  ws-ptr9               ULONG redefines ws-ptr.
-       01  ws-lowLim             ULONG.
-       01  ws-HighLim            ULONG.
+      $if p64 set
+       01  ws-ptr9               pic 9(18) comp-5 redefines ws-ptr.
+      $else
+       01  ws-ptr9               pic 9(9) comp-5 redefines ws-ptr.
+      $end
        01  ws-stacklimit         pic 9(9) comp-5.
        01  ws-stacklimitkb       pic 9(5).
        01  ws-stackpct           pic 9(3).
@@ -45,8 +73,13 @@
        linkage section.
        01  lnk-teb.
            03  lnk-seh           pointer.
+      $if p64 set
+           03  lnk-stackbase     pic 9(18) comp-5.
+           03  lnk-stacklimit    pic 9(18) comp-5.
+      $else 
            03  lnk-stackbase     pic 9(9) comp-5.
            03  lnk-stacklimit    pic 9(9) comp-5.
+      $end
 
        procedure division.
 
