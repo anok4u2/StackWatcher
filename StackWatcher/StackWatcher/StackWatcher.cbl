@@ -1,15 +1,19 @@
        copy "windows".
        identification division.
-       program-id. davsstack.
+       program-id. stackwatcher.
       ******************************************************************
+      *  
+      *  Author : D Sands (3rd Line Support Micro Focus)
+      *  
       *  Stack Size Calculator
+      *  
       *  Show how you can use some Windows API calls to work out the
       *  current stack size.
       *  
-      *  Demo is recursize with a "local-storage section". This is
+      *  Demo is recursive with a "local-storage section". This is
       *  allocated on the stack when run as native code in Micro Focus.
       *  
-      *  Date - 31/01/2019
+      *  Date - 11/02/2019
       *  
       ******************************************************************
        environment division.
@@ -20,17 +24,23 @@
        working-storage section.
        01  ws-stack-depth        pic 9(10) value 0.
        01  ws-teb-ptr            pointer.
-       01  ws-stack-size         pic 9(9) comp-5.
+       01  ws-stack-size         ULONG.
        01  ws-mbi                MEMORY-BASIC-INFORMATION.
        01  ws-size-in            SIZE-T.
        01  ws-size-out           SIZE-T.
        01  ws-ptr                pointer.
-       01  ws-ptr9               pic 9(9) comp-5 redefines ws-ptr.
+       01  ws-ptr9               ULONG redefines ws-ptr.
+       01  ws-lowLim             ULONG.
+       01  ws-HighLim            ULONG.
+       01  ws-stacklimit         pic 9(9) comp-5.
+       01  ws-stacklimitkb       pic 9(5).
+       01  ws-stackpct           pic 9(3).
 
        thread-local-storage section.
 
        local-storage section.
-       01  ws-local              pic x(1024).
+       01  ls-local              pic x(1024).
+       01  ls-end                pic x.
 
        linkage section.
        01  lnk-teb.
@@ -40,21 +50,45 @@
 
        procedure division.
 
+           if ws-stack-depth = 0
+               perform get-defined-stack
+           end-if
+
       *    if ws-stack-depth = 0
                perform check-stack-size
       *    end-if
 
            add 1 to ws-stack-depth
            display "Current Stack Depth=" ws-stack-depth
-           set ws-ptr to address of ws-local
+           set ws-ptr to address of ls-end
            compute ws-stack-size = lnk-stackbase - ws-ptr9
-           display "Stack Usage = " ws-stack-size
-           move all "A" to ws-local
-           call "davsstack"
+           compute ws-stackpct = (ws-stack-size/ws-stacklimit) * 100
+           display "Current stack usage is " ws-stackpct "%"
+           if ws-stackpct > 90
+               display "******* DANGER ******** : Using more than "
+                       "90% of Stack"
+           end-if
+           display " "
+           move all "A" to ls-local
+
+      ***** Recursively call ourself to generate more local-storage
+      ***** On the stack. 
+      ***** We deliberatly are allowing this to run until it crashes.
+      ***** Windows will eventually terminate this with a Stack 
+      ***** Overflow.
+           call "stackwatcher"
 
            goback.
 
        check-stack-size section.
+
+      ***** The Current Thread Stack Limit and Base are held in the
+      ***** Thread Environment Block. The Stack can grow up to the 
+      ***** limit defined. So this Limit may not be hard until it
+      ***** reaches the Actual HARD limit for the thread.
+
+      ***** We have used GetCurrentThreadStackLimits to get the 
+      ***** hard stack limit.
 
            call winapi "NtCurrentTeb" returning ws-teb-ptr
            set address lnk-teb to ws-teb-ptr
@@ -62,6 +96,8 @@
            display "Stack Size from Thread Environment Block = "
                      ws-stack-size
 
+      ***** Virtual Query is alternative to find the size of the
+      ***** Stack Currently
            move length of ws-mbi to ws-size-in
            call winapi "VirtualQuery" using by value lnk-stacklimit
                                             by reference ws-mbi
@@ -70,4 +106,20 @@
            end-call
            display "StackRegion Size from VirtualQuery = "
                regionsize of ws-mbi 
+           .
+
+
+       get-defined-stack section.
+           
+           call winapi "GetCurrentThreadStackLimits" using
+                  by reference ws-lowLim ws-HighLim
+           end-call
+           subtract ws-lowLim from ws-HighLim giving ws-stacklimit
+           display "Process Stack Limit = " ws-stacklimit " bytes"
+           divide ws-stacklimit by 1024 giving ws-stacklimitkb
+           display "Process Stack Limit = " ws-stacklimitkb " kb"
+           display " "
+           display " "
+           display " "
+           display " "
            .
